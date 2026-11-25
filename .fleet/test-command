@@ -1,0 +1,2 @@
+# Command the Stop gate runs before an agent may finish.
+make test-fast

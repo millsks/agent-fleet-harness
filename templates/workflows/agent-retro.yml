@@ -1,0 +1,29 @@
+# Retro agent: weekly, proposes evidence-backed harness changes as a PR for a human to review.
+name: agent-retro
+on:
+  schedule:
+    - cron: "17 14 * * 1"
+  workflow_dispatch:
+concurrency:
+  group: agent-retro
+  cancel-in-progress: false
+jobs:
+  retro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 200
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Use the retro subagent to review the last 7 days of agent work.
+            Open a PR titled "Harness retro: <date>" containing harness-proposals.md
+            and, for each proposal, the proposed change. Do not merge it.
+          claude_args: "--max-turns 40"

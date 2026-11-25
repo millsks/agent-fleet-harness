@@ -1,0 +1,10 @@
+# Globs (relative to the repo root) that agents may not edit.
+# This repo develops the harness itself, so gates/ and workflows stay editable here.
+# Target repos get the stricter defaults from gates/protect_paths.py via
+# templates/fleet/protected-paths.
+.git/**
+.env
+.env.*
+secrets/**
+**/secrets/**
+LICENSE

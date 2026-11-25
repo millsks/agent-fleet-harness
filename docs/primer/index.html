@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Fleet Primer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: a technical primer for a principal engineer, dense and ordered
+   IDEA a transit route map for the SDLC: each station is an agent, each track a handoff artifact
+   PICTURE the live route of seven stations with a token travelling; tap one to open its spec sheet
+   COLOUR pale pink ground, ink, teal for agents, claret for gates and human checkpoints
+   TYPE Libre Franklin 800 display + Libre Franklin text, JetBrains Mono for code
+   LAYOUT title across the top, route full width beneath, station sheet under it; stacks on phone */
+:root{color-scheme:light dark;--bg:light-dark(#ffe3dc,#1c1512);--ink:light-dark(#1a1817,#f3e9e4);--mute:light-dark(#5d524d,#b9aaa3);--teal:light-dark(#0d7680,#3fb8c2);--claret:light-dark(#990f3d,#ff6f97);--panel:light-dark(#fff4f0,#271d19);--rule:light-dark(#e9b9ab,#4a3a33);--code:light-dark(#1a1817,#0f0b09);--codeink:#f3e9e4}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Libre Franklin",system-ui,sans-serif;overflow-x:clip}
+.band{padding-block:clamp(28px,4vw,56px);padding-left:max(5vw,16px);padding-right:max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-weight:800;font-size:clamp(32px,5vw,50px);line-height:1.05;letter-spacing:-.02em;margin:0 0 12px;text-wrap:balance;max-width:20ch}
+h2{font-weight:800;font-size:clamp(24px,3vw,32px);line-height:1.1;letter-spacing:-.015em;margin:0 0 10px;text-wrap:balance}
+h3{font-size:18px;margin:0 0 6px}
+p{margin:0 0 12px;max-width:68ch}
+a{color:var(--teal)}
+.lede{font-size:18px;color:var(--mute);max-width:62ch}
+nav.scroll{display:flex;gap:6px;overflow-x:auto;padding:10px max(5vw,16px);border-block:1px solid var(--rule);background:var(--bg)}
+nav.scroll a{flex:none;text-decoration:none;color:var(--ink);font-weight:500;font-size:14px;padding:8px 12px;border-radius:999px;border:1px solid var(--rule)}
+nav.scroll a:hover,nav.scroll a:focus-visible{background:var(--panel)}
+@media(min-width:900px){nav.scroll{position:sticky;top:0;z-index:5}}
+code,pre{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13.5px}
+code{overflow-wrap:anywhere}
+pre{background:var(--code);color:var(--codeink);padding:16px;border-radius:8px;overflow-x:auto;margin:0;line-height:1.5}
+.codebox{position:relative;margin:12px 0}
+.copy{position:absolute;top:8px;right:8px;font:600 13px "Libre Franklin",sans-serif;background:#3a2e29;color:#f3e9e4;border:0;border-radius:6px;padding:8px 12px;min-height:36px;cursor:pointer}
+.copy:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.cap{font-size:13px;color:var(--mute);margin-top:6px}
+/* route */
+.route{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;margin-top:20px;padding:28px 0 8px}
+.route::before{content:"";position:absolute;left:7%;right:7%;top:52px;height:8px;border-radius:4px;background:var(--teal);opacity:.35}
+.route::after{content:"";position:absolute;right:2%;top:30px;width:5%;height:30px;border:3px dashed var(--claret);border-left:0;border-radius:0 14px 14px 0;opacity:.6}
+.stn{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;color:var(--ink);font:inherit;cursor:pointer;padding:4px 2px;min-height:44px}
+.dot{width:48px;height:48px;border-radius:50%;background:var(--bg);border:6px solid var(--teal);display:grid;place-items:center;font-weight:800;font-size:15px;transition:transform .25s,background .25s}
+.stn .nm{font-weight:700;font-size:15px;text-align:center;line-height:1.2}
+.stn .ag{font-size:13px;color:var(--mute);text-align:center}
+.stn.gate .dot{border-color:var(--claret)}
+.stn.on .dot{background:var(--teal);color:var(--bg);transform:scale(1.15)}
+.stn.gate.on .dot{background:var(--claret)}
+.stn.tick .dot{box-shadow:0 0 0 6px color-mix(in srgb,var(--teal) 30%,transparent)}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--mute);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.sheet{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:clamp(16px,3vw,28px);margin-top:16px}
+.sheet h3{font-size:24px;font-weight:800;margin-bottom:4px}
+dl.spec{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 16px;margin:0}
+dl.spec dt{font-weight:700;font-size:14px;color:var(--mute)}
+dl.spec dd{margin:0;font-size:15px}
+.gatebox{border-left:4px solid var(--claret);padding:4px 0 4px 14px;margin-top:12px}
+@media(max-width:720px){.route{grid-template-columns:minmax(0,1fr);padding:0;gap:6px}.route::before{left:31px;right:auto;top:20px;bottom:20px;width:8px;height:auto}.route::after{display:none}.stn{flex-direction:row;justify-content:flex-start;gap:14px}.stn .nm,.stn .ag{text-align:left}.stn .txt{display:flex;flex-direction:column}.sheet{grid-template-columns:minmax(0,1fr)}}
+/* tables */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:700;font-size:14px;color:var(--mute)}
+tbody th{color:var(--ink);font-size:15px}
+.alt{background:var(--panel)}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(16px,3vw,40px);align-items:start}
+@media(max-width:800px){.cols{grid-template-columns:minmax(0,1fr)}}
+.ctl{display:grid;gap:14px;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:18px}
+label{font-weight:700;font-size:14px;display:block;margin-bottom:4px}
+select,input[type=range]{width:100%;font:16px "Libre Franklin",sans-serif;min-height:44px}
+select{padding:8px 10px;border:1px solid var(--rule);border-radius:8px;background:var(--bg);color:var(--ink)}
+input[type=range]{accent-color:var(--teal)}
+.chk{display:flex;align-items:center;gap:10px;font-weight:500;font-size:15px;min-height:44px}
+.chk input{width:22px;height:22px;accent-color:var(--teal);flex:none}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button,.opt{font:600 15px "Libre Franklin",sans-serif;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--teal);color:var(--bg);border-color:var(--teal)}
+.out{border-radius:12px;padding:18px;border:2px solid var(--teal)}
+.out.block{border-color:var(--claret)}
+.out b{font-size:20px;display:block;margin-bottom:4px}
+.principles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px 32px;margin-top:12px}
+.principles div{border-top:2px solid var(--ink);padding-top:10px}
+.quiz{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;margin-top:12px}
+.q{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:18px}
+.q .opts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.opt.right{background:var(--teal);color:var(--bg);border-color:var(--teal)}
+.opt.wrong{border-color:var(--claret);color:var(--claret)}
+.fb{font-size:15px;min-height:1.5em}
+.ladder{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:10px}
+.ladder li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:14px 16px}
+.ladder li.done{opacity:.65}
+.ladder input{width:24px;height:24px;margin-top:2px;accent-color:var(--teal)}
+.bar{height:10px;border-radius:5px;background:var(--rule);overflow:hidden;margin-top:12px;max-width:520px}
+.bar span{display:block;height:100%;background:var(--teal);transition:width .3s}
+/* harness map */
+.hgrid{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:14px}
+.hgrid .hd{font-weight:700;font-size:14px;color:var(--mute);padding:4px 8px;align-self:end}
+.hgrid .rh{font-weight:800;font-size:15px;writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;padding:8px 4px;border-radius:8px;color:var(--bg)}
+.cell{border-radius:10px;padding:10px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;min-height:120px}
+.cell.g{background:color-mix(in srgb,var(--teal) 14%,var(--panel))}
+.cell.s{background:color-mix(in srgb,var(--claret) 12%,var(--panel))}
+.chip{font:600 14px "Libre Franklin",sans-serif;padding:8px 12px;min-height:40px;border-radius:999px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.detail{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:16px;margin-top:12px;min-height:96px}
+@media(max-width:600px){.hgrid{grid-template-columns:minmax(0,1fr)}.hgrid .hd,.hgrid .corner{display:none}.hgrid .rh{writing-mode:horizontal-tb;transform:none;text-align:left}.cell::before{content:attr(data-l);width:100%;font-weight:700;font-size:13px;color:var(--mute)}}
+/* agent loop */
+.loop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:16px;position:relative;padding-bottom:44px}
+.loop::after{content:"repeat until verified, budget spent, or no progress";position:absolute;left:12%;right:37%;bottom:0;height:34px;border:3px solid var(--teal);border-top:0;border-radius:0 0 18px 18px;font-size:13px;color:var(--mute);display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;opacity:.9}
+.lstep{background:var(--panel);border:2px solid var(--rule);border-radius:12px;padding:14px;transition:border-color .2s,transform .2s}
+.lstep b{display:block;font-size:18px;margin-bottom:4px}
+.lstep.hot{border-color:var(--claret);transform:translateY(-3px)}
+.lstep.end{border-style:dashed}
+@media(max-width:720px){.loop{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding-bottom:0}.loop::after{content:"↻ Repeat until verified, budget spent, or no progress";position:static;grid-column:1/-1;height:auto;border:0;justify-content:flex-start;padding:0;font-size:14px}}
+/* context bar */
+.ctxbar{display:flex;height:56px;border-radius:10px;overflow:hidden;border:1px solid var(--rule);margin:14px 0 6px}
+.ctxbar span{display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;transition:flex-basis .35s}
+.ctxleg{display:flex;flex-wrap:wrap;gap:10px 18px;font-size:13px;color:var(--mute)}
+.ctxleg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.big{font-weight:800;font-size:clamp(28px,4vw,40px);line-height:1;letter-spacing:-.02em}
+.vs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.vs h3{font-size:16px}
+.vs .bad h3{color:var(--claret)}.vs .good h3{color:var(--teal)}
+@media(max-width:800px){.vs{grid-template-columns:minmax(0,1fr)}}
+/* flow */
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:14px 0}
+.flow div{flex:1 1 140px;background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:12px;font-size:15px;position:relative}
+.flow div b{display:block}
+.flow div.h{border:2px solid var(--claret)}
+footer{font-size:14px;color:var(--mute)}
+footer li{margin-bottom:6px}
+@media(max-width:600px){table{font-size:14px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--rule)}.stack th,.stack td{border:0;padding:3px 0}.stack td{display:flow-root;padding-inline-start:8.5em}.stack td::before{content:attr(data-l);float:inline-start;width:8em;margin-inline-start:-8.5em;font-weight:700;color:var(--mute);font-size:13px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="band" style="padding-bottom:12px">
+<div class="wrap">
+<h1>Building an agent fleet for the SDLC</h1>
+<p class="lede">A hands-on primer using Claude Code and the Claude Agent SDK. An agent is the model plus its harness: instructions, context, tools, permissions, checks and feedback. A fleet is a pipeline of narrow agents, each with its own harness, a gate before work moves on, and loops that heal failures and learn from them. Tap any station on the route to open its spec sheet.</p>
+<div class="route" id="route" role="tablist" aria-label="SDLC stations"></div>
+<div class="legend"><span><i style="background:var(--teal)"></i>Autonomous agent</span><span><i style="background:var(--claret)"></i>Human checkpoint at the gate</span><span>Dashed loop: Operate files new issues back into Triage</span></div>
+<div class="sheet" id="sheet" role="tabpanel" aria-live="polite"></div>
+</div>
+</header>
+
+<nav class="scroll" aria-label="Sections">
+<a href="#harness">1 · Harness</a><a href="#loop">2 · Agent loop</a><a href="#levels">3 · Composition</a><a href="#anatomy">4 · Anatomy</a><a href="#context">5 · Context</a><a href="#tools">6 · Tools</a><a href="#env">7 · Environment</a><a href="#gates">8 · Gates</a><a href="#orchestrate">9 · Orchestration</a><a href="#heal">10 · Self-healing</a><a href="#learn">11 · Self-learning</a><a href="#observe">12 · Observe and evaluate</a><a href="#principles">13 · Rules</a><a href="#check">14 · Check yourself</a><a href="#ladder">15 · Rollout</a><a href="#sources">Sources</a>
+</nav>
+
+<section class="band" id="harness"><div class="wrap">
+<h2>Harness engineering: when an agent slips, fix the harness, not the model</h2>
+<p>The harness is everything except the model. Claude Code ships with a builder harness (system prompt, tools, the agent loop, compaction). Your team owns the outer harness: everything in the repo and CI that steers the agent before it acts (guides) and checks it afterward (sensors). Some parts are deterministic code; others are themselves model-judged. A strong fleet has all four quadrants filled.</p>
+<div class="hgrid" id="hgrid">
+<div class="corner"></div><div class="hd">Deterministic (code)</div><div class="hd">Model-judged (prompts)</div>
+<div class="rh" style="background:var(--teal)">Guides · before</div><div class="cell g" data-l="Guides, deterministic" id="c-gd"></div><div class="cell g" data-l="Guides, model-judged" id="c-gm"></div>
+<div class="rh" style="background:var(--claret)">Sensors · after</div><div class="cell s" data-l="Sensors, deterministic" id="c-sd"></div><div class="cell s" data-l="Sensors, model-judged" id="c-sm"></div>
+</div>
+<div class="detail" id="hdetail" aria-live="polite"></div>
+<h3 style="margin-top:24px">The ratchet: turn each slip into a permanent fix</h3>
+<p>Pick a real failure. The habit is to prefer the most deterministic fix that works, and to add a test that would have caught it.</p>
+<div class="seg" id="segSlip"></div>
+<div class="detail" id="slipOut" aria-live="polite"></div>
+</div></section>
+
+<section class="band alt" id="loop"><div class="wrap">
+<h2>Inside one agent: gather, act, verify, repeat</h2>
+<p>Every agent in the fleet runs the same loop. It reads to build context, acts with a tool, checks the result, and goes around again until the work is verified or something stops it. Most fleet failures are this loop going wrong in a recognisable way. Pick a failure mode to see where it happens, how to spot it, and the harness fix.</p>
+<div class="loop" id="lsteps">
+<div class="lstep" data-s="gather"><b>Gather</b>Read files, grep, run the Explore subagent, read spec.md and logs.</div>
+<div class="lstep" data-s="act"><b>Act</b>Edit, write, run commands, call MCP tools, delegate to subagents.</div>
+<div class="lstep" data-s="verify"><b>Verify</b>Run tests and lint, re-read the diff, compare against acceptance criteria.</div>
+<div class="lstep end" data-s="exit"><b>Exit</b>Verified, turn budget spent, or blocked and escalated.</div>
+</div>
+<div class="seg" id="segFail" style="margin-top:18px"></div>
+<div class="detail" id="failOut" aria-live="polite"></div>
+</div></section>
+
+<section class="band" id="levels"><div class="wrap">
+<h2>Pick the smallest unit of coordination that works</h2>
+<p>Claude Code gives you five ways to put more than one agent on a job. They differ in who coordinates, whether agents can talk to each other, and whether a human has to be present. A CI fleet is mostly built from the last two rows, with subagents inside each run.</p>
+<div class="scroll"><table class="stack">
+<thead><tr><th>Level</th><th>Who coordinates</th><th>Runs unattended?</th><th>Best for</th><th>Watch out for</th></tr></thead>
+<tbody>
+<tr><th>Single session</th><td>You</td><td>No</td><td>Small, sequential changes</td><td>Context fills up; one agent grades its own work</td></tr>
+<tr class="alt"><th>Subagents</th><td>The main agent</td><td>Yes, inside a run</td><td>Focused workers (tester, reviewer) that report back a result; each has its own context window</td><td>Only the summary returns; nesting is capped at three levels by default</td></tr>
+<tr><th>Agent teams</th><td>A lead plus self-claiming teammates on a shared task list</td><td>No: interactive sessions only, not <code>-p</code> or the SDK</td><td>Parallel research, review, competing-hypothesis debugging</td><td>Experimental flag; much higher token cost; teammates editing the same file overwrite each other</td></tr>
+<tr class="alt"><th>Headless / Agent SDK</th><td>Your code</td><td>Yes</td><td>Deterministic pipelines: triage, plan, build, test, review as separate runs</td><td>You own retries, budgets, logging and state</td></tr>
+<tr><th>GitHub Action</th><td>Repo events (issue, label, PR, cron)</td><td>Yes</td><td>Event-driven stations with no infra to run; built on the Agent SDK</td><td>Actions minutes plus API tokens; set turn limits and timeouts</td></tr>
+</tbody></table></div>
+<p class="cap">Agent teams are experimental and enabled with <code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code>. In non-interactive mode a named subagent runs as an ordinary subagent even with teams enabled.</p>
+</div></section>
+
+<section class="band alt" id="anatomy"><div class="wrap">
+<h2>An agent is a Markdown file with a narrow job</h2>
+<p>Subagents live in <code>.claude/agents/</code> (checked into the repo) or <code>~/.claude/agents/</code>. Only <code>name</code> and <code>description</code> are required; the description is how the orchestrator decides when to delegate. Build one below and copy it into your repo.</p>
+<div class="cols">
+<div class="ctl">
+<div><label for="role">Role</label><select id="role"><option value="implementer">Implementer</option><option value="tester">Test writer / verifier</option><option value="reviewer">Reviewer</option><option value="triager">Triager</option></select></div>
+<div><label for="model">Model</label><select id="model"><option>inherit</option><option>opus</option><option>sonnet</option><option>haiku</option></select></div>
+<div><label for="turns">Turn budget (maxTurns): <span id="turnsv">30</span></label><input type="range" id="turns" min="5" max="80" step="5" value="30"></div>
+<label class="chk"><input type="checkbox" id="iso" checked> Run in its own git worktree (isolation: worktree)</label>
+<p class="cap" id="why" style="margin:0"></p>
+</div>
+<div class="codebox"><button class="copy" data-copy="agentOut">Copy</button><pre><code id="agentOut"></code></pre><p class="cap" id="agentPath"></p></div>
+</div>
+<p style="margin-top:16px">Other useful fields: <code>disallowedTools</code>, <code>permissionMode</code> (<code>plan</code> for read-only planners), <code>skills</code> to preload, scoped <code>hooks</code> and <code>mcpServers</code>, <code>memory</code>, <code>effort</code>, and <code>background: true</code>. Claude Code silently ignores unknown fields, so typos fail quietly: check <code>/agents</code> after adding one.</p>
+</div></section>
+
+<section class="band" id="context"><div class="wrap">
+<h2>Context engineering: spend the window on the task</h2>
+<p>Everything loaded at startup competes with the work itself, and long, cluttered context makes agents miss instructions. The rule is progressive disclosure: load a short map up front, and pull detail only when it is needed. Toggle the fixes below to see the effect on an example build agent.</p>
+<div class="cols">
+<div>
+<div class="ctxbar" id="ctxbar" aria-hidden="true"></div>
+<div class="ctxleg" id="ctxleg"></div>
+<p class="big" id="ctxfree" style="margin-top:16px"></p>
+<p class="cap" id="ctxcap">Illustrative token counts for a typical repo, not measurements.</p>
+</div>
+<div class="ctl" id="ctxctl">
+<label class="chk"><input type="checkbox" id="cx1"> Move the 4,000-token deploy runbook out of CLAUDE.md into a skill</label>
+<label class="chk"><input type="checkbox" id="cx2"> Turn off two MCP servers this role never uses</label>
+<label class="chk"><input type="checkbox" id="cx3"> Delegate codebase exploration to the Explore subagent</label>
+<label class="chk"><input type="checkbox" id="cx4"> Pass spec.md, not the whole issue thread and chat history</label>
+</div>
+</div>
+<div class="scroll" style="margin-top:20px"><table class="stack">
+<thead><tr><th>Layer</th><th>Loads</th><th>Put here</th><th>Keep out</th></tr></thead>
+<tbody>
+<tr><th>CLAUDE.md</th><td>Every session, every agent</td><td>Build and test commands, repo map, hard rules, pointers to docs</td><td>Runbooks, long examples, anything only one role needs</td></tr>
+<tr class="alt"><th>Skills</th><td>Description always; body when triggered; references when opened</td><td>Procedures: release steps, migration recipe, how to add an endpoint</td><td>Rules that must always apply (those go in CLAUDE.md or hooks)</td></tr>
+<tr><th>Subagent prompt</th><td>When that agent runs</td><td>Role, scope, output format, stop conditions</td><td>Repo facts duplicated from CLAUDE.md</td></tr>
+<tr class="alt"><th>Artifacts</th><td>When the agent reads them</td><td>spec.md, test reports, heal-report.md: the handoff between stations</td><td>Raw transcripts of earlier agents</td></tr>
+<tr><th>Subagent results</th><td>Summary returns to the caller</td><td>Exploration and verification that would flood the main context</td><td>Work where the caller needs every detail</td></tr>
+</tbody></table></div>
+<p class="cap">Long runs compact automatically; subagents can lower their threshold with <code>autoCompactWindow</code>, and <code>omitClaudeMd: true</code> skips CLAUDE.md for agents that don't need it. Claude Code warns at startup when custom subagent descriptions exceed 15,000 tokens.</p>
+</div></section>
+
+<section class="band alt" id="tools"><div class="wrap">
+<h2>Tool design: build tools for agents, not for developers</h2>
+<p>Agents are only as good as the tools they're given. An MCP server that mirrors your REST API one endpoint per tool usually performs badly: too many overlapping tools, huge outputs, and errors the agent can't act on. Design each tool around a task the agent actually performs.</p>
+<div class="vs">
+<div class="bad"><h3>Mirrors the API</h3><div class="codebox" style="margin:0"><pre><code>list_users()        # returns all 40k users
+list_orders()       # returns all orders
+get_order(id)
+run_sql(query)      # anything goes
+
+→ Error 500</code></pre></div></div>
+<div class="good"><h3>Shaped for the task</h3><div class="codebox" style="margin:0"><pre><code>orders_search(customer_email, status=None,
+              limit=20, detail="concise")
+  # 20 rows, key fields, "12 more: pass page=2"
+orders_get(order_id, detail="full")
+
+→ No customer with email a@b.co. Try
+  customers_find(name=...) first.</code></pre></div></div>
+</div>
+<div class="principles">
+<div><h3>Fewer, consolidated tools</h3><p>One tool per task, not per endpoint. Overlapping tools are the main reason agents call the wrong one.</p></div>
+<div><h3>Namespaced, plain names</h3><p>Prefix by service or resource (<code>orders_search</code>, <code>jira_issue_create</code>) so names stay distinct across many servers.</p></div>
+<div><h3>Concise by default</h3><p>Return the fields that matter, paginate and truncate with a hint about what's left, and offer a detailed mode.</p></div>
+<div><h3>Errors that teach</h3><p>Say what was wrong and what to try next. The error message is a prompt the agent will act on.</p></div>
+<div><h3>Descriptions are prompts</h3><p>Write the description as you would brief a new hire: when to use it, what the parameters mean, an example.</p></div>
+<div><h3>Evaluate tools like code</h3><p>Run realistic tasks, read transcripts for wrong calls and wasted turns, and let an agent propose fixes to the descriptions.</p></div>
+</div>
+</div></section>
+
+<section class="band" id="env"><div class="wrap">
+<h2>The environment: make the repo easy for agents to work in</h2>
+<p>Agents fail on environments that humans have learned to work around: flaky setup, slow tests, tribal knowledge. Every item below cuts turns and false failures, and helps human engineers too.</p>
+<div class="scroll"><table class="stack">
+<thead><tr><th>Make it</th><th>Why agents need it</th><th>Example</th></tr></thead>
+<tbody>
+<tr><th>One-command setup</th><td>Agents can't guess undocumented steps, and each fresh worktree or CI job starts from nothing</td><td><code>pixi install</code>, a devcontainer, or a pinned container image</td></tr>
+<tr class="alt"><th>Fast feedback</th><td>The verify step runs dozens of times per task; a 20-minute suite means few loops per budget</td><td><code>make test-fast</code> under two minutes, full suite in CI</td></tr>
+<tr><th>Deterministic tests</th><td>A flaky test teaches the agent to "fix" code that was fine</td><td>No network, seeded randomness, quarantine list for known flakes</td></tr>
+<tr class="alt"><th>Actionable errors</th><td>Error text is the agent's only clue in the verify step</td><td>Custom lint rules that say which layer may import which, and how to fix it</td></tr>
+<tr><th>A written map</th><td>Replaces the knowledge a senior engineer carries in their head</td><td><code>ARCHITECTURE.md</code> linked from CLAUDE.md; module READMEs</td></tr>
+<tr class="alt"><th>Fixtures and seed data</th><td>Agents can reproduce bugs without production access</td><td><code>make seed</code> loads a small realistic dataset</td></tr>
+<tr><th>Sandboxed by default</th><td>Contains mistakes and prompt injection from issue text or web pages</td><td>Container per agent, network allowlist, short-lived scoped tokens, no prod credentials</td></tr>
+<tr class="alt"><th>Isolated workspaces</th><td>Parallel agents must not share a working tree</td><td><code>isolation: worktree</code>, or one CI job per agent</td></tr>
+</tbody></table></div>
+</div></section>
+
+<section class="band alt" id="gates"><div class="wrap">
+<h2>Gates make "done" mean done</h2>
+<p>Prompts are guidance; hooks are enforcement. A hook is a command that runs at a lifecycle event and reads the event as JSON on stdin. Exit code 2 blocks: on <code>PreToolUse</code> it stops the tool call, and on <code>Stop</code> it refuses to let the agent finish and sends stderr back to it as work to do. That is how a build agent is forced to keep going until tests pass.</p>
+<div class="cols">
+<div>
+<div class="codebox"><button class="copy" data-copy="hookSh">Copy</button><pre><code id="hookSh">#!/usr/bin/env bash
+# .claude/hooks/require-green.sh  (Stop hook)
+input=$(cat)
+# Avoid infinite loops: if we already pushed back once, let it stop
+if [ "$(jq -r '.stop_hook_active' &lt;&lt;&lt;"$input")" = "true" ]; then
+  exit 0
+fi
+if ! out=$(make test 2&gt;&amp;1); then
+  echo "Tests are failing. Fix them before finishing:" &gt;&amp;2
+  echo "$out" | tail -n 40 &gt;&amp;2
+  exit 2   # block the stop, feed stderr back to Claude
+fi
+exit 0</code></pre></div>
+<div class="codebox"><button class="copy" data-copy="hookJson">Copy</button><pre><code id="hookJson">// .claude/settings.json
+{
+  "hooks": {
+    "Stop": [{ "hooks": [{ "type": "command",
+      "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/require-green.sh" }] }],
+    "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command",
+      "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/no-force-push.sh" }] }]
+  }
+}</code></pre></div>
+</div>
+<div class="ctl">
+<h3>Try the Stop gate</h3>
+<p style="margin:0">The build agent says it is finished. What does the hook do?</p>
+<div><label>Test suite</label><div class="seg" id="segTests"><button aria-pressed="true" data-v="fail">Failing</button><button aria-pressed="false" data-v="pass">Passing</button></div></div>
+<div><label>stop_hook_active</label><div class="seg" id="segActive"><button aria-pressed="true" data-v="false">false (first stop)</button><button aria-pressed="false" data-v="true">true (already pushed back)</button></div></div>
+<div class="out" id="gateOut"></div>
+<p class="cap" style="margin:0">In agent teams, the same pattern applies with <code>TaskCompleted</code> and <code>TeammateIdle</code>: exit 2 refuses completion and keeps the teammate working.</p>
+</div>
+</div>
+</div></section>
+
+<section class="band" id="orchestrate"><div class="wrap">
+<h2>Orchestrating: events in, artifacts out</h2>
+<p>Two ways to wire the route. Start with GitHub Actions, where each label is a station and the repo is the shared state. Move to the Agent SDK when you need retries, custom state, or to run on your own infrastructure.</p>
+<div class="seg" id="segOrch" style="margin-bottom:8px"><button aria-pressed="true" data-v="gha">GitHub Actions</button><button aria-pressed="false" data-v="sdk">Agent SDK (Python)</button><button aria-pressed="false" data-v="cli">Headless CLI</button></div>
+<div class="codebox"><button class="copy" data-copy="orchOut">Copy</button><pre><code id="orchOut"></code></pre></div>
+<p class="cap" id="orchCap"></p>
+</div></section>
+
+<section class="band alt" id="heal"><div class="wrap">
+<h2>Self-healing: let agents fix red builds, with hard stop rules</h2>
+<p>A healer agent runs when CI fails. It reads the failed log, decides what kind of failure it is, and either fixes the root cause on the same branch or hands off. The hard part isn't the fix, it's stopping: without loop guards a healer can burn budget, weaken tests to make them pass, or fight another agent forever.</p>
+<div class="flow">
+<div><b>CI fails</b>workflow_run completes with failure</div>
+<div><b>Classify</b>code bug, lint/type, flaky, infrastructure, unknown</div>
+<div><b>Check breakers</b>attempts, same error twice, cost, protected branch</div>
+<div><b>Fix or hand off</b>commit [agent-heal], or file a quarantine issue</div>
+<div class="h"><b>Escalate</b>label needs-human with heal-report.md</div>
+</div>
+<div class="cols">
+<div class="ctl">
+<h3>Should the healer try again?</h3>
+<div><label for="hType">Failure type</label><select id="hType"><option value="code">Test assertion (code bug)</option><option value="lint">Lint or type error</option><option value="flaky">Flaky: passes on rerun</option><option value="infra">Infrastructure: registry or runner down</option><option value="unknown">Unknown</option></select></div>
+<div><label for="hAtt">Heal attempts on this branch today: <span id="hAttV">1</span></label><input type="range" id="hAtt" min="0" max="5" value="1"></div>
+<label class="chk"><input type="checkbox" id="hSame"> Same error signature as the last attempt</label>
+<label class="chk"><input type="checkbox" id="hMain"> Failure is on main</label>
+</div>
+<div class="out" id="healOut"></div>
+</div>
+<div class="codebox"><button class="copy" data-copy="healYml">Copy</button><pre><code id="healYml"># .github/workflows/agent-heal.yml
+name: agent-heal
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+concurrency:
+  group: heal-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+jobs:
+  heal:
+    if: &gt;
+      github.event.workflow_run.conclusion == 'failure' &amp;&amp;
+      github.event.workflow_run.head_branch != 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 50
+      - name: Circuit breaker and failure log
+        id: cb
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(git log --since="24 hours ago" --grep='\[agent-heal\]' --oneline | wc -l)
+          echo "attempts=$n" &gt;&gt; "$GITHUB_OUTPUT"
+          gh run view ${{ github.event.workflow_run.id }} --log-failed | tail -n 400 &gt; ci-failure.log
+      - name: Heal
+        if: steps.cb.outputs.attempts &lt; 3
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.HEALER_APP_TOKEN }}
+          prompt: |
+            CI failed. Read ci-failure.log and find the root cause of the FIRST failure.
+            Classify it as CODE, LINT, FLAKY, INFRA or UNKNOWN in heal-report.md.
+            Only for CODE or LINT: fix it, run make test-fast, and commit with a
+            message starting "[agent-heal]".
+            Never skip, delete or loosen a test or assertion. Never edit CI config.
+            If the error matches the previous heal attempt in git log, stop and say so.
+          claude_args: "--max-turns 25 --model sonnet"
+      - name: Escalate
+        if: steps.cb.outputs.attempts &gt;= 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ github.event.workflow_run.head_branch }}" \
+            --body "Healer stopped after 3 attempts today. Needs a human."
+          gh pr edit "${{ github.event.workflow_run.head_branch }}" --add-label needs-human</code></pre></div>
+<p class="cap">Pushes made with the default <code>GITHUB_TOKEN</code> don't trigger new workflow runs, so CI would never re-check the fix. Push with a GitHub App token instead, which is also why the attempt counter matters. Pair it with a PreToolUse hook that blocks edits under <code>.github/</code> and to test files' assertions.</p>
+</div></section>
+
+<section class="band" id="learn"><div class="wrap">
+<h2>Self-learning: the fleet proposes changes to its own harness</h2>
+<p>Models don't learn between runs; the harness does. Learning means turning outcomes into reviewed, versioned changes to CLAUDE.md, agent prompts, skills, hooks and tests. A retrospective agent does the analysis, the eval suite checks the change didn't make things worse, and a human merges it.</p>
+<div class="flow">
+<div><b>Outcomes</b>merged PRs, rejected PRs, human fix-up commits, review comments, heal reports</div>
+<div><b>Retro agent</b>weekly: finds repeated slips and their cause</div>
+<div><b>Harness PR</b>at most three changes, each citing the PRs that prove it</div>
+<div><b>Eval gate</b>pass rate and cost must not get worse</div>
+<div class="h"><b>Human merges</b>and deletes stale rules</div>
+</div>
+<div class="cols">
+<div class="codebox"><button class="copy" data-copy="retroMd">Copy</button><pre><code id="retroMd">---
+name: retro
+description: Weekly review of fleet outcomes. Proposes harness changes.
+tools: Read, Grep, Glob, Write, Bash
+model: opus
+maxTurns: 40
+memory: project
+---
+
+Review the last 7 days of agent work with `gh`:
+- agent PRs that were closed unmerged, and why
+- merged agent PRs that needed human fix-up commits
+- review comments that repeat across PRs
+- heal-report.md files that ended in UNKNOWN or escalation
+
+Find patterns that happened at least twice. For each, propose the
+most deterministic fix that would have prevented it, in this order:
+test or lint rule &gt; hook &gt; skill &gt; CLAUDE.md line &gt; agent prompt.
+
+Write proposals to harness-proposals.md. Each one cites the PRs
+that show the problem. Propose at most three. Also list any
+existing CLAUDE.md rule that nothing has needed in 30 days.</code></pre></div>
+<div>
+<h3>Guardrails for learning</h3>
+<ul>
+<li><strong>Diffs, not drift.</strong> Every learned change is a commit to a file in version control, so it can be reviewed, blamed and reverted. Subagent <code>memory</code> is useful for an agent's own notes, but review those files too.</li>
+<li><strong>Evidence required.</strong> No rule without at least two incidents behind it.</li>
+<li><strong>Evals before merge.</strong> A harness change runs against the fixed task set; a drop in pass rate or a jump in cost blocks it.</li>
+<li><strong>Garbage collection.</strong> Rules accumulate. Delete ones that nothing triggers, so CLAUDE.md stays short.</li>
+<li><strong>Humans own the rules.</strong> The fleet proposes; people approve. Never let an agent merge changes to its own prompts or hooks.</li>
+</ul>
+</div>
+</div>
+</div></section>
+
+<section class="band alt" id="observe"><div class="wrap">
+<h2>Observe and evaluate the fleet like a production service</h2>
+<p>You can't improve a harness you can't measure. Export telemetry from every run, track a few numbers per station, and keep a fixed set of past tasks to replay whenever the harness changes.</p>
+<div class="cols">
+<div>
+<h3>Turn on telemetry</h3>
+<div class="codebox"><button class="copy" data-copy="otel">Copy</button><pre><code id="otel"># metrics and events over OTLP
+export CLAUDE_CODE_ENABLE_TELEMETRY=1
+export OTEL_METRICS_EXPORTER=otlp
+export OTEL_LOGS_EXPORTER=otlp
+export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+
+# distributed traces (beta): prompt -&gt; API calls -&gt; tool runs
+export CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1
+export OTEL_TRACES_EXPORTER=otlp</code></pre></div>
+<p class="cap">Set these once in managed settings so every agent and CI job reports. Keep the <code>stream-json</code> transcript of each run as well; it's what the retro agent and humans read when a run goes wrong.</p>
+</div>
+<div class="scroll"><table>
+<thead><tr><th>Measure</th><th>Tells you</th></tr></thead>
+<tbody>
+<tr><td>Merge rate per station</td><td>Is this agent's output usable?</td></tr>
+<tr><td>Human fix-up rate</td><td>Hidden cost of "successful" PRs</td></tr>
+<tr><td>Reopen and revert rate</td><td>Quality after merge</td></tr>
+<tr><td>Turns and cost per merged PR</td><td>Efficiency; spikes signal loops</td></tr>
+<tr><td>Heal success and escalation rate</td><td>Whether the healer helps or thrashes</td></tr>
+<tr><td>Eval pass rate per harness version</td><td>Whether a change actually improved things</td></tr>
+</tbody></table></div>
+</div>
+<h3 style="margin-top:20px">Replay a fixed task set on every harness change</h3>
+<div class="codebox"><button class="copy" data-copy="evalSh">Copy</button><pre><code id="evalSh">#!/usr/bin/env bash
+# evals/run.sh: each task dir has base_commit, prompt.md, check.sh (hidden tests)
+set -u
+out=evals/results/$(git rev-parse --short HEAD); mkdir -p "$out"
+for t in evals/tasks/*/; do
+  id=$(basename "$t"); wt=$(mktemp -d)
+  git worktree add -q --detach "$wt" "$(cat "$t/base_commit")"
+  cp -r .claude CLAUDE.md "$wt"/          # the harness version under test
+  ( cd "$wt" &amp;&amp; claude -p "$(cat "$OLDPWD/$t/prompt.md")" --max-turns 30 \
+      --output-format json &gt; "$OLDPWD/$out/$id.json" )
+  if ( cd "$wt" &amp;&amp; bash "$OLDPWD/$t/check.sh" ); then r=pass; else r=fail; fi
+  cost=$(jq -r '.total_cost_usd // "n/a"' "$out/$id.json")
+  echo "$id $r $cost" | tee -a "$out/summary.txt"
+  git worktree remove --force "$wt"
+done
+grep -c ' pass ' "$out/summary.txt"</code></pre></div>
+<p class="cap">Start with 20 to 30 real issues your team already solved, with their real fixes' tests as <code>check.sh</code>. Results vary run to run, so compare averages over two or three runs before accepting a change.</p>
+</div></section>
+
+<section class="band" id="principles"><div class="wrap">
+<h2>Ten rules that keep a fleet trustworthy</h2>
+<div class="principles">
+<div><h3>Separate the maker from the checker</h3><p>The agent that wrote the code never writes its acceptance tests or reviews it. A fresh context with a different prompt catches what the author rationalised away.</p></div>
+<div><h3>Hand off files, not chat</h3><p>Every station emits an artifact the next one reads: issue labels, <code>spec.md</code> with acceptance criteria, a branch, a test report, review comments. Artifacts are auditable and survive restarts.</p></div>
+<div><h3>One writer per file</h3><p>Parallel agents get disjoint file sets or their own worktree. Merge conflicts between agents are the most common way fleets waste tokens.</p></div>
+<div><h3>Least privilege by role</h3><p>Reviewers and planners are read-only. Builders get <code>Edit</code> and a scoped <code>Bash</code> allowlist. Only the release agent touches tags, and it never force-pushes.</p></div>
+<div><h3>Budget every run</h3><p>Set <code>maxTurns</code> / <code>--max-turns</code>, job timeouts and concurrency limits. A runaway agent costs money, not just time.</p></div>
+<div><h3>Gates are code, not prompts</h3><p>"Run the tests" in a prompt is a request. A Stop hook that exits 2 is a guarantee. Put lint, tests and secret scans in hooks and CI.</p></div>
+<div><h3>Humans at irreversible points</h3><p>Approve specs for features, approve merges to main, approve releases. Let agents run freely in between, where everything is a branch you can delete.</p></div>
+<div><h3>Every slip tightens the harness</h3><p>When an agent gets something wrong, ask which guide or sensor would have stopped it, add it, and add the case to the eval set.</p></div>
+<div><h3>Loops need exits</h3><p>Every retry loop has an attempt cap, a cost cap and a no-progress check. When one trips, the agent escalates with a report instead of trying again.</p></div>
+<div><h3>Measure the fleet like a service</h3><p>Log <code>stream-json</code> output, track pass rate per station, reopen rate, turns and cost per merged PR. Keep a small eval set of past issues to test prompt changes against.</p></div>
+</div>
+</div></section>
+
+<section class="band alt" id="check"><div class="wrap">
+<h2>Check yourself: which pattern fits?</h2>
+<div class="quiz" id="quiz"></div>
+</div></section>
+
+<section class="band" id="ladder"><div class="wrap">
+<h2>Rollout plan: one station at a time</h2>
+<p>Each step earns trust for the next. Progress is saved in this browser.</p>
+<div class="bar" aria-hidden="true"><span id="barFill" style="width:0"></span></div>
+<p class="cap" id="barTxt"></p>
+<ol class="ladder" id="steps"></ol>
+</div></section>
+
+<footer class="band alt" id="sources"><div class="wrap">
+<h2>Sources</h2>
+<ul>
+<li><a href="https://code.claude.com/docs/en/sub-agents">Claude Code: Create custom subagents</a> (frontmatter fields, nesting depth, background agents)</li>
+<li><a href="https://code.claude.com/docs/en/agent-teams">Claude Code: Orchestrate teams of Claude Code sessions</a> (experimental agent teams)</li>
+<li><a href="https://code.claude.com/docs/en/hooks">Claude Code: Hooks reference</a> (events, exit code 2)</li>
+<li><a href="https://code.claude.com/docs/en/headless">Claude Code: Run Claude Code programmatically</a> (<code>-p</code>, <code>--output-format</code>, <code>--json-schema</code>)</li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/overview">Agent SDK overview</a> and <a href="https://code.claude.com/docs/en/agent-sdk/python">Python reference</a></li>
+<li><a href="https://code.claude.com/docs/en/github-actions">Claude Code GitHub Actions</a> and <a href="https://github.com/anthropics/claude-code-action">anthropics/claude-code-action</a></li>
+<li><a href="https://code.claude.com/docs/en/skills">Claude Code: Skills</a> and <a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills">Equipping agents with Agent Skills</a> (progressive disclosure)</li>
+<li><a href="https://code.claude.com/docs/en/monitoring-usage">Claude Code: Monitoring</a> (OpenTelemetry metrics, events, traces)</li>
+<li><a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents, with agents</a> (Anthropic Engineering)</li>
+<li><a href="https://martinfowler.com/articles/harness-engineering.html">Harness engineering for coding agent users</a> (Birgitta Böckeler, martinfowler.com)</li>
+<li><a href="https://addyosmani.com/blog/agent-harness-engineering/">Agent harness engineering</a> (Addy Osmani)</li>
+</ul>
+<p>Features and flags change quickly; check the docs against your installed version before relying on a field.</p>
+</div></footer>
+
+<script>
+{
+const S=[
+{k:"Triage",n:"1",ag:"triager",gate:false,trig:"Issue opened",model:"haiku",tools:"Read, Grep, Glob, Bash(gh issue *)",out:"Labels, severity, repro notes; adds agent:plan or needs-human",g:"Structured output: --json-schema forces a valid label set; unknowns route to a human.",why:"Cheap, fast, high volume. A small model with read-only tools is enough to classify and find the code area."},
+{k:"Plan",n:"2",ag:"planner",gate:true,trig:"Label agent:plan",model:"opus",tools:"Read, Grep, Glob (permissionMode: plan)",out:"spec.md: approach, files to touch, acceptance criteria, test plan",g:"Human approves the spec for features (adds agent:build). Small bug fixes can skip straight to Build.",why:"The cheapest place to fix a wrong idea is before code exists. Spend your strongest model here."},
+{k:"Build",n:"3",ag:"implementer",gate:false,trig:"Label agent:build",model:"sonnet",tools:"Read, Edit, Write, Bash(make *, git commit *)",out:"Feature branch with commits, in its own worktree",g:"Stop hook runs lint and tests; exit 2 sends failures back until green or the turn budget runs out.",why:"Isolation in a worktree means parallel builders never collide, and a failed attempt is just a deleted branch."},
+{k:"Test",n:"4",ag:"test-writer",gate:false,trig:"After spec, before or alongside Build",model:"sonnet",tools:"Read, Write (tests/ only), Bash(make test)",out:"Tests mapped to each acceptance criterion; for bugs, a failing repro test first",g:"Each acceptance criterion in spec.md has a test; new tests fail on main and pass on the branch.",why:"A different agent writes tests from the spec, not from the code, so tests check intent rather than mirror the implementation."},
+{k:"Review",n:"5",ag:"reviewer",gate:true,trig:"PR opened or updated",model:"opus",tools:"Read, Grep, Glob (read-only)",out:"PR review: blocking and non-blocking findings with file:line",g:"No blocking findings, CI green, then a human approves the merge.",why:"Fresh context, different lens. Run several reviewers (security, performance, tests) in parallel as subagents."},
+{k:"Release",n:"6",ag:"releaser",gate:true,trig:"Merge to main or release label",model:"sonnet",tools:"Read, Edit (CHANGELOG), Bash(git tag *)",out:"Changelog entry, version bump, release notes draft",g:"Human publishes the release. A PreToolUse hook blocks force-push and tag deletion.",why:"Writing notes is tedious and well suited to an agent; deciding to ship stays with people."},
+{k:"Operate",n:"7",ag:"watcher",gate:false,trig:"Nightly cron and failed CI runs",model:"haiku",tools:"Read, Bash(gh run view *, gh issue create *)",out:"New issues for flaky tests, failing builds, dependency alerts",g:"De-duplicates against open issues before filing. Feeds Triage, closing the loop.",why:"Three loops live here: a healer fixes red CI with hard stop rules, the watcher turns production signals into issues, and a weekly retro agent proposes harness changes that must pass evals before a human merges them."}
+];
+const route=document.getElementById('route'),sheet=document.getElementById('sheet');
+route.innerHTML=S.map((s,i)=>`<button class="stn${s.gate?' gate':''}" role="tab" id="st${i}" aria-selected="false" data-i="${i}"><span class="dot">${s.n}</span><span class="txt"><span class="nm">${s.k}</span><span class="ag">${s.ag}</span></span></button>`).join('');
+let cur=0,auto=true,tick=0;
+const show=i=>{cur=i;const s=S[i];
+ route.querySelectorAll('.stn').forEach((b,j)=>{b.classList.toggle('on',j===i);b.setAttribute('aria-selected',j===i)});
+ sheet.innerHTML=`<div><h3>${s.k}: the ${s.ag} agent</h3><p>${s.why}</p><div class="gatebox"><strong>${s.gate?'Gate with human checkpoint':'Automated gate'}</strong><br>${s.g}</div></div><dl class="spec"><dt>Trigger</dt><dd>${s.trig}</dd><dt>Model</dt><dd>${s.model}</dd><dt>Tools</dt><dd><code>${s.tools}</code></dd><dt>Hands off</dt><dd>${s.out}</dd><dt>Next</dt><dd>${i<6?S[i+1].k:'Triage (loop)'}</dd></dl>`;};
+route.addEventListener('click',e=>{const b=e.target.closest('.stn');if(!b)return;auto=false;show(+b.dataset.i)});
+route.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowDown'){e.preventDefault();auto=false;show((cur+1)%7);document.getElementById('st'+cur).focus()}if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();auto=false;show((cur+6)%7);document.getElementById('st'+cur).focus()}});
+show(0);
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(!reduce){setInterval(()=>{if(!auto)return;tick=(tick+1)%7;route.querySelectorAll('.stn').forEach((b,j)=>b.classList.toggle('tick',j===tick))},1100)}
+
+/* harness map */
+const H=[
+{c:"gd",n:"Tool allowlists",d:"Each role gets only the tools it needs (tools, disallowedTools, --allowedTools). The agent can't misuse what it doesn't have.",w:".claude/agents/*.md, settings.json permissions"},
+{c:"gd",n:"Sandbox and worktrees",d:"Containers, network allowlists, isolation: worktree. Limits the damage of any mistake.",w:"CI runner config, devcontainer, agent frontmatter"},
+{c:"gd",n:"Setup scripts",d:"One command to a working environment, so agents never improvise installs.",w:"pixi.toml, Makefile, devcontainer.json"},
+{c:"gd",n:"Scaffolds and codegen",d:"Generators for endpoints, migrations, components. The agent fills in logic instead of inventing structure.",w:"scripts/new-endpoint, templates/"},
+{c:"gm",n:"CLAUDE.md",d:"The short map every agent reads: commands, layout, hard rules, pointers. Keep it lean; it loads every time.",w:"repo root and subdirectories"},
+{c:"gm",n:"Skills",d:"Procedures loaded only when relevant: release, migrations, how to add a feature flag.",w:".claude/skills/<name>/SKILL.md"},
+{c:"gm",n:"Agent prompts",d:"Role, scope, stop conditions and output format for each station.",w:".claude/agents/*.md"},
+{c:"gm",n:"spec.md",d:"Acceptance criteria written before code. Steers the builder and gives the tester something to check against.",w:"specs/<issue>.md"},
+{c:"sd",n:"Tests",d:"The main sensor. Fast, deterministic tests let the verify step run many times per task.",w:"tests/, make test-fast"},
+{c:"sd",n:"Lint and types",d:"Custom rules encode architecture (which layer may import which) with error messages that say how to fix it.",w:"linter config, custom rules"},
+{c:"sd",n:"Hooks",d:"Runtime enforcement: block risky commands, refuse to stop while tests are red, check task completion.",w:".claude/settings.json hooks"},
+{c:"sd",n:"CI checks",d:"The same sensors run again where the agent can't skip them, plus secret scanning and dependency checks.",w:".github/workflows/"},
+{c:"sm",n:"Reviewer agents",d:"Fresh-context review with a lens (security, performance, tests). Catches design problems tests miss.",w:".claude/agents/reviewer.md"},
+{c:"sm",n:"LLM-judged evals",d:"A model grades outputs that tests can't (clarity of a spec, quality of release notes) against a rubric.",w:"evals/"},
+{c:"sm",n:"Retro agent",d:"Reads outcomes across many runs and proposes harness changes. The sensor for the harness itself.",w:".claude/agents/retro.md"}];
+const hd=$=>document.getElementById($);
+H.forEach((h,i)=>{hd('c-'+h.c).insertAdjacentHTML('beforeend',`<button class="chip" data-h="${i}" aria-pressed="false">${h.n}</button>`)});
+const kind={gd:"Guide, deterministic",gm:"Guide, model-judged",sd:"Sensor, deterministic",sm:"Sensor, model-judged"};
+const showH=i=>{document.querySelectorAll('#hgrid .chip').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.h===i));const h=H[i];hd('hdetail').innerHTML=`<strong>${h.n}</strong> · ${kind[h.c]}<br>${h.d}<br><span class="cap">Lives in: <code>${h.w}</code></span>`};
+hd('hgrid').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b)showH(+b.dataset.h)});
+showH(10);
+const SL=[
+{n:"Edited a generated file",f:"Deterministic guide plus sensor: a PreToolUse hook that blocks Edit and Write on paths under gen/, with a message saying which generator to run instead. Add a CI check that regenerates and diffs."},
+{n:"Said tests passed when they didn't",f:"Deterministic sensor: a Stop hook that runs the tests itself and exits 2 on failure. Never trust the agent's own report of a check."},
+{n:"Used a deprecated internal API",f:"Deterministic sensor first: a lint rule banning the import, with an error that names the replacement. Only fall back to a CLAUDE.md line if a lint rule isn't possible."},
+{n:"Got the release steps wrong",f:"Model-judged guide: move the procedure into a release skill with a script for the mechanical steps, so the agent runs it rather than recreating it."},
+{n:"Fixed the symptom, not the cause",f:"Guide plus sensor: the spec template requires a root-cause line, and the reviewer prompt checks that the fix addresses it. Add the case to the eval set."},
+{n:"Ignored a rule in a 600-line CLAUDE.md",f:"Context fix: shorten CLAUDE.md to the essentials and move detail into skills. If the rule is critical, enforce it with a hook instead of prose."}];
+hd('segSlip').innerHTML=SL.map((s,i)=>`<button data-v="${i}" aria-pressed="${i===0}">${s.n}</button>`).join('');
+const slip=v=>{hd('slipOut').innerHTML='<strong>Harness fix</strong><br>'+SL[v].f};
+
+/* loop failures */
+const F=[
+{n:"Premature done",s:"exit",sym:"Claims success; tests were never run or are still red.",sig:"Stop without a test run in the transcript; CI red on the PR.",fix:"Stop hook that runs tests and exits 2; reviewer checks acceptance criteria."},
+{n:"Doom loop",s:"act",sym:"Same edit, same error, over and over.",sig:"Repeated tool calls with identical inputs; turns climbing with no new files touched.",fix:"maxTurns, an error-signature check in the hook or orchestrator, escalate with a report after two identical failures."},
+{n:"Drift",s:"act",sym:"Refactors unrelated code or adds unrequested features.",sig:"Diff touches files not listed in spec.md.",fix:"Spec lists files in scope; reviewer flags out-of-scope changes; CI check on diff paths for agent PRs."},
+{n:"Shallow fix",s:"verify",sym:"Deletes or loosens the failing test, or catches and hides the error.",sig:"Diff removes assertions or adds broad try/except.",fix:"Tester owns tests/, builder can't edit them (hook); reviewer prompt checks for weakened assertions."},
+{n:"Context starvation",s:"gather",sym:"Writes code that ignores existing helpers or conventions.",sig:"Duplicate utilities appear; reviewer comments repeat.",fix:"Better repo map in CLAUDE.md, an Explore pass before acting, skills for common patterns."},
+{n:"Context rot",s:"gather",sym:"Long run forgets early instructions after compaction.",sig:"Quality drops late in long transcripts.",fix:"Smaller tasks per agent, key constraints in CLAUDE.md or the spec (which persist), subagents for side work."}];
+hd('segFail').innerHTML=F.map((f,i)=>`<button data-v="${i}" aria-pressed="${i===0}">${f.n}</button>`).join('');
+const fail=v=>{const f=F[v];document.querySelectorAll('#lsteps .lstep').forEach(x=>x.classList.toggle('hot',x.dataset.s===f.s));hd('failOut').innerHTML=`<strong>${f.n}</strong>, in the ${f.s} step<br>${f.sym}<br><strong>How to spot it:</strong> ${f.sig}<br><strong>Harness fix:</strong> ${f.fix}`};
+
+/* context bar */
+const CX={sys:["Built-in system and tools",15000,"#5d524d"],cmd:["CLAUDE.md",6000,"#0d7680"],mcp:["MCP tool definitions",22000,"#990f3d"],skl:["Skill and agent descriptions",3000,"#3fb8c2"],exp:["Exploration reads",45000,"#b0603a"],hist:["Issue thread and history",20000,"#7a5a8c"]};
+const TOTAL=200000;
+const ctx=()=>{const v={sys:15000,cmd:document.getElementById('cx1').checked?2000:6000,mcp:document.getElementById('cx2').checked?7000:22000,skl:document.getElementById('cx1').checked?3200:3000,exp:document.getElementById('cx3').checked?4000:45000,hist:document.getElementById('cx4').checked?3000:20000};
+ const used=Object.values(v).reduce((a,b)=>a+b,0),free=TOTAL-used;
+ hd('ctxbar').innerHTML=Object.keys(CX).map(k=>`<span style="flex-basis:${v[k]/TOTAL*100}%;background:${CX[k][2]}" title="${CX[k][0]}"></span>`).join('')+`<span style="flex-basis:${free/TOTAL*100}%;background:transparent;color:var(--mute)">free</span>`;
+ hd('ctxleg').innerHTML=Object.keys(CX).map(k=>`<span><i style="background:${CX[k][2]}"></i>${CX[k][0]}: ${(v[k]/1000).toFixed(1)}k</span>`).join('');
+ hd('ctxfree').textContent=Math.round(free/1000)+'k of 200k left for the work';};
+document.getElementById('ctxctl').addEventListener('change',ctx);ctx();
+
+/* heal sim */
+const heal=()=>{const t=hd('hType').value,a=+hd('hAtt').value,same=hd('hSame').checked,main=hd('hMain').checked,o=hd('healOut');hd('hAttV').textContent=a;
+ let cls='block',h,b;
+ if(main){h='Do not heal on main';b='Revert the offending commit or page the owner. Agents fix branches, people decide what happens to main.'}
+ else if(t==='flaky'){h='No code change: quarantine';b='Rerun once to confirm, add the test to the quarantine list, and file an issue for the tester agent. Changing code to "fix" a flake teaches the wrong lesson.'}
+ else if(t==='infra'){h='No code change: retry the job';b='Retry with backoff once or twice. If it still fails, alert whoever owns the runners. There is nothing in the repo to fix.'}
+ else if(same){h='Stop: no progress';b='The last attempt hit the same error, so another try will likely loop. Escalate with heal-report.md and the two transcripts.'}
+ else if(a>=3){h='Stop: attempt cap reached';b='Three heals in a day means the problem is bigger than a fix-up. Label needs-human and include what was tried.'}
+ else if(t==='unknown'){h='Diagnose only';b='Write the analysis to heal-report.md and escalate without changing code. Unknown failures are where agents make confident wrong fixes.'}
+ else{cls='';h='Heal: attempt '+(a+1)+' of 3';b=(t==='lint'?'Lint and type errors are the safest heals: small, local, and the checker confirms the fix.':'Find the root cause of the first failing assertion, fix the code, run the fast tests, and commit with [agent-heal]. Tests themselves stay untouched.')}
+ o.className='out '+cls;o.innerHTML=`<b>${h}</b>${b}`};
+['hType','hAtt','hSame','hMain'].forEach(id=>hd(id).addEventListener('input',heal));heal();
+
+/* agent builder */
+const R={
+implementer:{d:"Implements an approved spec.md on a feature branch. Use after a spec is approved.",t:"Read, Grep, Glob, Edit, Write, Bash",p:"You implement exactly what spec.md describes, nothing more.\n- Read spec.md and the files it lists before editing.\n- Make small commits with clear messages.\n- Run `make lint test` before you finish; fix failures.\n- Never edit tests/ to make a failing test pass.\n- If the spec is wrong or ambiguous, stop and write questions to QUESTIONS.md.",w:"Writes code, so it gets edit tools and a worktree. A Stop hook enforces green tests."},
+tester:{d:"Writes tests from spec.md acceptance criteria. Use before or alongside implementation; never on code it wrote.",t:"Read, Grep, Glob, Write, Bash",p:"You turn each acceptance criterion in spec.md into at least one test.\n- Work from the spec, not from the implementation.\n- For bugs, first write a test that reproduces the failure on main.\n- Only write under tests/.\n- Finish with a table mapping each criterion to its test names.",w:"Separate from the implementer so tests check intent. Restrict writes to tests/ with a PreToolUse hook."},
+reviewer:{d:"Reviews a diff for correctness, security and maintainability. Use proactively after code changes.",t:"Read, Grep, Glob, Bash",p:"You review the current branch against main. You do not edit files.\n- Run `git diff main...HEAD` to see the change.\n- Check it against spec.md acceptance criteria.\n- Report findings as BLOCKING or NIT with file:line and a suggested fix.\n- Say plainly when you find nothing blocking.",w:"Read-only: no Edit or Write. Bash is kept for git diff; tighten it with a PreToolUse hook. Isolation is unnecessary."},
+triager:{d:"Classifies new issues: type, severity, area, and whether an agent can take it. Use for every new issue.",t:"Read, Grep, Glob, Bash",p:"You triage one GitHub issue.\n- Find the code area involved with Grep and Glob.\n- Decide type (bug, feature, chore), severity, and whether it is agent-ready.\n- Agent-ready means: clear expected behaviour and a bounded change.\n- Otherwise label needs-human and say what is missing.",w:"High volume, low risk: a small model, read-only tools, structured output."}};
+const $=id=>document.getElementById(id);
+const build=()=>{const r=R[$('role').value],m=$('model').value,iso=$('iso').checked,tn=$('turns').value;$('turnsv').textContent=tn;
+ const name={implementer:'implementer',tester:'test-writer',reviewer:'reviewer',triager:'triager'}[$('role').value];
+ let f=`---\nname: ${name}\ndescription: ${r.d}\ntools: ${r.t}\nmodel: ${m}\nmaxTurns: ${tn}\n`;
+ if(iso)f+=`isolation: worktree\n`;
+ if($('role').value==='reviewer'||$('role').value==='triager')f+=`disallowedTools: Edit, Write\n`;
+ f+=`---\n\n${r.p}\n`;
+ $('agentOut').textContent=f;$('agentPath').textContent='Save as .claude/agents/'+name+'.md';$('why').textContent=r.w;};
+['role','model','turns','iso'].forEach(id=>$(id).addEventListener('input',build));
+const presetIso={implementer:true,tester:true,reviewer:false,triager:false},presetModel={implementer:'sonnet',tester:'sonnet',reviewer:'opus',triager:'haiku'};
+$('role').addEventListener('change',()=>{$('iso').checked=presetIso[$('role').value];$('model').value=presetModel[$('role').value];build()});
+$('model').value='sonnet';build();
+
+/* segmented controls */
+const seg=(id,fn)=>{const g=$(id);g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));fn(b.dataset.v)});return()=>g.querySelector('[aria-pressed=true]').dataset.v};
+let gT,gA;const gate=()=>{const t=gT(),a=gA(),o=$('gateOut');
+ if(t==='pass'){o.className='out';o.innerHTML='<b>Exit 0: agent may stop</b>Tests are green, so the hook allows the stop. The branch moves on to Review.';}
+ else if(a==='true'){o.className='out';o.innerHTML='<b>Exit 0: agent stops, tests still red</b>The hook already pushed back once, so it lets go to avoid a loop. Your orchestrator should mark the run failed and route it to a human, not open a PR.';}
+ else{o.className='out block';o.innerHTML='<b>Exit 2: stop is refused</b>The failing test output goes back to the agent as stderr, and it keeps working. It only ends when tests pass or the turn budget runs out.';}};
+gT=seg('segTests',gate);gA=seg('segActive',gate);gate();
+seg('segSlip',v=>slip(+v));slip(0);
+seg('segFail',v=>fail(+v));fail(0);
+
+/* orchestration */
+const O={
+gha:{c:`# .github/workflows/agent-build.yml
+name: agent-build
+on:
+  issues:
+    types: [labeled]
+concurrency:
+  group: agent-build-\${{ github.event.issue.number }}
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.event.label.name == 'agent:build'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: \${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Implement issue #\${{ github.event.issue.number }}.
+            Read specs/\${{ github.event.issue.number }}.md first.
+            Delegate test writing to the test-writer subagent,
+            then ask the reviewer subagent to review before opening a PR.
+            Open a draft PR that links the issue.
+          claude_args: "--max-turns 40 --model sonnet"`,cap:"One workflow per station, keyed on labels. The subagents in .claude/agents/ and the hooks in .claude/settings.json come along with the checkout, so the same gates apply in CI."},
+sdk:{c:`# fleet.py: a minimal pipeline. pip install claude-agent-sdk
+import asyncio
+from claude_agent_sdk import query, ClaudeAgentOptions, AgentDefinition
+
+AGENTS = {
+    "test-writer": AgentDefinition(
+        description="Writes tests from spec.md acceptance criteria.",
+        prompt="Turn each acceptance criterion into a test under tests/.",
+        tools=["Read", "Grep", "Glob", "Write", "Bash"],
+        model="sonnet",
+    ),
+    "reviewer": AgentDefinition(
+        description="Read-only reviewer of the current diff.",
+        prompt="Review git diff main...HEAD. Report BLOCKING or NIT.",
+        tools=["Read", "Grep", "Glob", "Bash"],
+        model="opus",
+    ),
+}
+
+async def run(stage: str, prompt: str, tools: list[str], **kw) -> str:
+    opts = ClaudeAgentOptions(
+        allowed_tools=tools,
+        agents=AGENTS,
+        cwd=kw.get("cwd", "."),
+        permission_mode=kw.get("mode", "acceptEdits"),
+        max_turns=kw.get("max_turns", 30),
+    )
+    result = ""
+    async for msg in query(prompt=prompt, options=opts):
+        if hasattr(msg, "result"):      # final ResultMessage
+            result = msg.result or ""
+    print(f"[{stage}] done")
+    return result
+
+async def main(issue: int, worktree: str):
+    await run("plan", f"Write specs/{issue}.md for issue #{issue}.",
+              ["Read", "Grep", "Glob", "Write"], mode="acceptEdits")
+    # Human approves the spec here (e.g. wait for a label) before building.
+    await run("build", f"Implement specs/{issue}.md. Use test-writer "
+              "for tests, then reviewer before you finish.",
+              ["Read", "Grep", "Glob", "Edit", "Write", "Bash", "Agent"],
+              cwd=worktree, max_turns=40)
+
+asyncio.run(main(123, "../wt-issue-123"))`,cap:"Your code owns the sequence, retries and state; each stage is a fresh context. Check the Python SDK reference for the exact options in your installed version; the subagent tool is named Agent in current Claude Code."},
+cli:{c:`# Triage with schema-checked output, then branch on it
+schema='{"type":"object","properties":{
+  "type":{"enum":["bug","feature","chore"]},
+  "agent_ready":{"type":"boolean"},
+  "area":{"type":"string"}},
+  "required":["type","agent_ready","area"]}'
+
+verdict=$(claude -p "Triage issue #123: $(gh issue view 123)" \\
+  --allowedTools "Read,Grep,Glob" \\
+  --output-format json --json-schema "$schema" \\
+  | jq '.structured_output')
+
+if [ "$(jq -r .agent_ready <<<"$verdict")" = "true" ]; then
+  gh issue edit 123 --add-label agent:plan
+else
+  gh issue edit 123 --add-label needs-human
+fi
+
+# Resume a session later by id
+sid=$(claude -p "Start the review" --output-format json | jq -r .session_id)
+claude -p "Continue: check test coverage" --resume "$sid"`,cap:"Headless mode is the glue for scripts and cron. Add --bare in CI so only the flags you pass apply, not hooks or MCP servers from someone's ~/.claude."}};
+const orch=v=>{$('orchOut').textContent=O[v].c;$('orchCap').textContent=O[v].cap};
+seg('segOrch',orch);orch('gha');
+
+/* copy */
+document.addEventListener('click',async e=>{const b=e.target.closest('.copy');if(!b)return;const t=$(b.dataset.copy).textContent;try{await navigator.clipboard.writeText(t);b.textContent='Copied'}catch(_){b.textContent='Select and copy'}setTimeout(()=>b.textContent='Copy',1600)});
+
+/* quiz */
+const Q=[
+{q:"Every night, label the 30 newest issues by type and severity.",o:["Agent team","Headless -p on a cron","Interactive session"],a:1,e:"Unattended, repetitive, one agent per issue. A scheduled Action or cron running claude -p with --json-schema gives you checkable output."},
+{q:"A flaky test has three plausible causes and you want them argued out while you watch.",o:["Agent team","Single subagent","GitHub Action"],a:0,e:"Competing hypotheses is the textbook case for teams: teammates investigate in parallel and try to disprove each other. It needs an interactive session."},
+{q:"After the implementer finishes, get an independent review before opening the PR.",o:["Same agent re-reads its work","Reviewer subagent","Agent team of five"],a:1,e:"A reviewer subagent gets a fresh context and read-only tools, then reports back. Cheap and focused; a team adds cost without benefit here."},
+{q:"Stop the build agent from declaring success while tests are red.",o:["Add it to CLAUDE.md","A Stop hook that exits 2","Raise maxTurns"],a:1,e:"CLAUDE.md is guidance the model may skip. A Stop hook is enforced by the runtime and sends the failures back as work."},
+{q:"Four builders working on separate issues at the same time in one repo.",o:["Shared checkout","One worktree each","One agent, four prompts"],a:1,e:"isolation: worktree (or one worktree per CI job) keeps writers apart, so no agent overwrites another's files."},
+{q:"Release notes need writing, and the tag must not be pushed without approval.",o:["Releaser drafts, human publishes","Releaser publishes directly","Skip the agent"],a:0,e:"Drafting is safe to automate. Publishing is irreversible, so it is a human checkpoint, backed by a PreToolUse hook that blocks risky git commands."},
+{q:"The healer's second attempt failed with exactly the same error as its first.",o:["Try a third time","Escalate with a report","Raise maxTurns and retry"],a:1,e:"Same error signature means no progress. Another attempt will likely loop. Stop, write heal-report.md, and hand it to a person."},
+{q:"Agents keep editing files in gen/ that should come from a generator.",o:["Add a line to CLAUDE.md","PreToolUse hook blocking gen/","Tell the reviewer to watch for it"],a:1,e:"Prefer the most deterministic fix. A hook makes the mistake impossible and its message can point to the right generator; prose can be ignored."},
+{q:"The retro agent wants to add five new rules to CLAUDE.md after one bad week.",o:["Merge them all","Keep at most three, each with evidence, after evals pass","Let it merge its own changes"],a:1,e:"Learning lands as reviewed diffs backed by repeated incidents and checked against the eval set. Agents never merge changes to their own harness."},
+{q:"An agent keeps calling list_orders and then filtering 40,000 rows itself.",o:["Bigger context window","Consolidated orders_search tool with filters","More examples in CLAUDE.md"],a:1,e:"That's a tool design problem. A task-shaped tool with filters and concise output saves tokens and turns, and removes the wrong option."}];
+const qz=$('quiz');
+qz.innerHTML=Q.map((x,i)=>`<div class="q"><p style="margin:0"><strong>${x.q}</strong></p><div class="opts">${x.o.map((o,j)=>`<button class="opt" data-q="${i}" data-j="${j}">${o}</button>`).join('')}</div><p class="fb" id="fb${i}"></p></div>`).join('');
+qz.addEventListener('click',e=>{const b=e.target.closest('.opt');if(!b)return;const i=+b.dataset.q,j=+b.dataset.j,x=Q[i];
+ b.parentElement.querySelectorAll('.opt').forEach(o=>o.classList.remove('right','wrong'));
+ b.classList.add(j===x.a?'right':'wrong');$('fb'+i).textContent=(j===x.a?'Right. ':'Not quite. ')+x.e});
+
+document.querySelectorAll('.stack').forEach(t=>{const h=[...t.rows[0].cells].map(c=>c.textContent);[...t.tBodies[0].rows].forEach(r=>[...r.cells].forEach((c,i)=>{c.dataset.l=h[i]||''}))});
+/* ladder */
+const L=[
+["Make the repo agent-ready","One-command setup, a fast test target, deterministic tests, and a sandboxed runner. Everything else depends on these."],
+["Write a short CLAUDE.md for one repo","Build and test commands, repo map, hard rules, pointers to docs. Move procedures into skills from day one."],
+["Add the reviewer subagent","Read-only, used in your own interactive sessions. Lowest risk, fastest feedback on prompt quality."],
+["Add the Stop and PreToolUse hooks","Green tests to finish; block force-push and edits to protected paths. Test them by trying to break them."],
+["Automate PR review in CI","claude-code-action on pull_request with a turn limit. Watch the comments for a week and tune the prompt."],
+["Automate triage with structured output","Headless -p with --json-schema on new issues. Measure how often humans re-label."],
+["Planner, then human-approved specs","Agents write spec.md; you approve with a label. This is where you learn what agent-ready means for your code."],
+["Builders in worktrees, opening draft PRs","Implementer plus test-writer subagents, label-triggered, with budgets, timeouts and concurrency limits."],
+["Turn on telemetry and build the eval set","OTel to your collector, transcripts kept, and 20 to 30 solved issues with hidden tests to replay."],
+["Add the healer with circuit breakers","workflow_run trigger, three attempts a day, no-progress check, never touching tests or CI config."],
+["Close the loop with the watcher","Nightly job files issues for flaky tests and failed builds. Track cost and pass rate per station."],
+["Start the weekly retro","The retro agent proposes up to three evidence-backed harness changes; evals gate them; a human merges."]];
+let done=[];try{done=JSON.parse(localStorage.getItem('fleetLadder')||'[]')}catch(_){}
+const st=$('steps');
+const drawL=()=>{st.innerHTML=L.map((s,i)=>`<li class="${done.includes(i)?'done':''}"><input type="checkbox" id="lad${i}" data-i="${i}" ${done.includes(i)?'checked':''}><label for="lad${i}" style="font-weight:400;font-size:16px;margin:0"><strong>${i+1}. ${s[0]}</strong><br>${s[1]}</label></li>`).join('');
+ const p=Math.round(done.length/L.length*100);$('barFill').style.width=p+'%';$('barTxt').textContent=done.length+' of '+L.length+' steps done';};
+st.addEventListener('change',e=>{const i=+e.target.dataset.i;done=e.target.checked?[...new Set([...done,i])]:done.filter(x=>x!==i);try{localStorage.setItem('fleetLadder',JSON.stringify(done))}catch(_){}drawL()});
+drawL();
+}
+</script>
+</body>
+</html>

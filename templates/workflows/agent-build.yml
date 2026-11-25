@@ -1,0 +1,46 @@
+# Planner and implementer: label-driven. agent:plan writes a spec PR;
+# a human approves it by adding agent:build; then the implementer opens a draft PR.
+name: agent-build
+on:
+  issues:
+    types: [labeled]
+concurrency:
+  group: agent-build-${{ github.event.issue.number }}
+  cancel-in-progress: false
+jobs:
+  plan:
+    if: github.event.label.name == 'agent:plan'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Use the planner subagent to write specs/${{ github.event.issue.number }}.md
+            for issue #${{ github.event.issue.number }}. Open a PR with only the spec,
+            linked to the issue, for a human to approve.
+          claude_args: "--max-turns 30"
+  build:
+    if: github.event.label.name == 'agent:build'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Use the implementer subagent to implement specs/${{ github.event.issue.number }}.md
+            for issue #${{ github.event.issue.number }}. It should use test-writer for tests
+            and reviewer before finishing. Open a draft PR that links the issue.
+          claude_args: "--max-turns 40"

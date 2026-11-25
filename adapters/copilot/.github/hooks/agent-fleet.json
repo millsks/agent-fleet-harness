@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "python3 .fleet/gates/protect_paths.py --format copilot",
+        "timeoutSec": 30
+      },
+      {
+        "type": "command",
+        "bash": "python3 .fleet/gates/guard_commands.py --format copilot",
+        "timeoutSec": 30
+      }
+    ]
+  }
+}
