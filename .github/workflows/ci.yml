@@ -11,15 +11,21 @@ concurrency:
 jobs:
   check:
     name: check (python ${{ matrix.python }})
-    runs-on: ubuntu-latest
+    # Python 3.9 is kept because enterprise sandboxes (e.g. RHEL 9) still ship it.
+    # Newer runner images no longer provide 3.9, so that job pins ubuntu-24.04.
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.9", "3.13"]
+        include:
+          - python: "3.9"
+            os: ubuntu-24.04
+          - python: "3.13"
+            os: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
       - name: Install lint tools
