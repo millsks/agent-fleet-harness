@@ -1,0 +1,59 @@
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual environments and environment managers
+.venv/
+venv/
+env/
+.python-version
+.pixi/*
+!.pixi/config.toml
+.conda/
+
+# Test, coverage and tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# --- Secrets ----------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Agent tooling: personal and local settings ------------------------------
+# Shared settings (.claude/settings.json, AGENTS.md, CLAUDE.md) are committed.
+.claude/settings.local.json
+CLAUDE.local.md
+AGENTS.local.md
+.github/copilot/settings.local.json
+
+# --- Agent run artifacts ------------------------------------------------------
+evals/results/
+ci-failure.log
+.worktrees/
+*.transcript.jsonl
+
+# --- Editors and OS -----------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+.DS_Store
+Thumbs.db

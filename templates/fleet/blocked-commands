@@ -1,0 +1,4 @@
+# Extra regular expressions for shell commands agents may not run.
+# These add to the built-in rules in gates/guard_commands.py.
+# Example: block direct database access from agents
+# \bpsql\b.*\bprod\b

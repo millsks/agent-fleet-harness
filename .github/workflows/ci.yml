@@ -1,0 +1,40 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    name: check (python ${{ matrix.python }})
+    # Python 3.9 is kept because enterprise sandboxes (e.g. RHEL 9) still ship it.
+    # Newer runner images no longer provide 3.9, so that job pins ubuntu-24.04.
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.9"
+            os: ubuntu-24.04
+          - python: "3.13"
+            os: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install lint tools
+        run: python -m pip install --disable-pip-version-check ruff shellcheck-py
+      - name: Lint
+        run: make lint
+      - name: Test
+        run: make test
+      - name: Validate harness
+        run: make validate
+      - name: Adapters in sync
+        run: make sync-check

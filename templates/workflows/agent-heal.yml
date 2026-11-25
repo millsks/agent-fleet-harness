@@ -1,0 +1,56 @@
+# Healer agent: fixes code or lint failures on feature branches, with circuit breakers.
+# Push with a GitHub App token (HEALER_APP_TOKEN): pushes made with the default
+# GITHUB_TOKEN do not trigger new workflow runs, so CI would never re-check the fix.
+name: agent-heal
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+concurrency:
+  group: agent-heal-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+jobs:
+  heal:
+    if: >
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_branch != github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 50
+          token: ${{ secrets.HEALER_APP_TOKEN }}
+      - name: Circuit breaker and failure log
+        id: cb
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          attempts=$(git log --since="24 hours ago" --grep='^\[agent-heal\]' --oneline | wc -l)
+          echo "attempts=$attempts" >> "$GITHUB_OUTPUT"
+          gh run view "$RUN_ID" --log-failed | tail -n 400 > ci-failure.log
+      - name: Heal
+        if: steps.cb.outputs.attempts < 3
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.HEALER_APP_TOKEN }}
+          prompt: |
+            Use the healer subagent. CI failed on this branch; the log is in ci-failure.log.
+            This is heal attempt ${{ steps.cb.outputs.attempts }} of 3 today.
+          claude_args: "--max-turns 25"
+      - name: Escalate
+        if: steps.cb.outputs.attempts >= 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          gh pr comment "$BRANCH" --body "Healer stopped after 3 attempts in 24 hours. Needs a human."
+          gh pr edit "$BRANCH" --add-label needs-human

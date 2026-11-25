@@ -1,0 +1,10 @@
+# Globs (relative to the repo root) that agents may not edit.
+# A pattern ending in /** protects a whole directory.
+.git/**
+.env
+.env.*
+secrets/**
+**/secrets/**
+.github/workflows/**
+.fleet/**
+gates/**

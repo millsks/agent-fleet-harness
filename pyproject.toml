@@ -1,0 +1,14 @@
+# Tool configuration only. This repo is not a Python package: gates and
+# scripts are standalone files that use the standard library.
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["UP007", "UP045"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["_common", "_frontmatter", "sync_adapters"]

@@ -1,0 +1,25 @@
+# Triager agent: labels every new issue and marks whether an agent can take it.
+name: agent-triage
+on:
+  issues:
+    types: [opened]
+concurrency:
+  group: agent-triage-${{ github.event.issue.number }}
+  cancel-in-progress: false
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Use the triager subagent on issue #${{ github.event.issue.number }}.
+            Apply labels for type, severity and area. If agent_ready is true add
+            the label agent:plan, otherwise add needs-human and comment with what is missing.
+          claude_args: "--max-turns 15"
